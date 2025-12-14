@@ -108,7 +108,7 @@ export function Dashboard() {
                             <IndicatorCard
                                 title="Market Regime (GMM)"
                                 value={analysis.marketPhase}
-                                trend={analysis.marketPhase.includes('Bullish') ? 'up' : analysis.marketPhase.includes('Bearish') ? 'down' : 'neutral'}
+                                trend={analysis.action.includes('Buy') ? 'up' : analysis.action.includes('Sell') ? 'down' : 'neutral'}
                                 description={`Action Signal: ${analysis.action}`}
                             />
                             <IndicatorCard

@@ -134,6 +134,7 @@ def predict_stock_price(symbol: str, days: int = 15):
     current_price = last_row['Close']
     expected_return_pct = ((future_price - current_price) / current_price) * 100
     
+    
     # Determine Action Signal based on Regime + Technicals + Forecast (Consensus)
     # "Quant Rule v2":
     # If Regime is Bullish:
@@ -185,5 +186,8 @@ def predict_stock_price(symbol: str, days: int = 15):
         print(json.dumps(result, indent=2, default=str), flush=True)
     except Exception as e:
         print(f"Failed to log payload: {e}", flush=True)
+
+    # Log specific Future Price for user convenience
+    print(f"\n>> 15-DAY FORECAST TARGET: {future_price:.2f} ({expected_return_pct:.2f}%) <<\n", flush=True)
 
     return result

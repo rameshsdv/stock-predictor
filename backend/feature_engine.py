@@ -180,49 +180,61 @@ def add_hurst_feature(df: pd.DataFrame, window=100) -> pd.DataFrame:
     
     return df
 
-def detect_regimes_gmm(df: pd.DataFrame, n_components=3):
+def detect_regimes_gmm(df: pd.DataFrame, n_components=4):
     """
     Step 4: Unsupervised Regime Detection (GMM).
-    Clusters market states into 3 regimes (e.g., Bear, Neutral, Bull)
-    based on Volatility (ATR) and Trend Strength (ADX) and Returns.
+    Refined (v5): Uses 4 Clusters and trains on last 2 years for sensitivity.
     """
     # Select features for clustering
-    # We want features that define "Stat Check": Volatility, Momentum, Strength
     features = ['Norm_ATR', 'ADX', 'RSI', 'Return_1d']
     
-    X = df[features].copy()
+    # Filter for training (Sensitivity Upgrade)
+    # If we use full 5yr history, massive old volatility washes out recent moves.
+    # We fit on the last ~500 days (2 years) but predict on full.
+    train_window = 500
     
-    # GMM requires scaling
+    X = df[features].copy()
+    X.replace([np.inf, -np.inf], np.nan, inplace=True)
+    X.fillna(method='ffill', inplace=True)
+    X.fillna(0, inplace=True)
+    
+    # Fit only on recent history
+    if len(X) > train_window:
+        X_train = X.iloc[-train_window:]
+    else:
+        X_train = X
+
+    # Scaling (Fit on Train, Transform All)
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    scaler.fit(X_train)
+    X_scaled = scaler.transform(X) # Apply context to full history
     
     gmm = GaussianMixture(n_components=n_components, covariance_type='full', random_state=42)
-    gmm.fit(X_scaled)
+    gmm.fit(X_scaled[-train_window:] if len(X) > train_window else X_scaled)
     
-    # Predict clusters
+    # Predict clusters for ALL data
     regimes = gmm.predict(X_scaled)
     df['Regime'] = regimes
     
-    # INTERPRET CLUSTERS
-    # We need to map Cluster 0, 1, 2 to human meaning.
-    # Usually:
-    # High Return, Low Vol -> Bull
-    # Negative Return, High Vol -> Bear/Crash
-    # Low Return, Low Vol -> Sideways
+    # INTERPRET CLUSTERS (Dynamic Labeling)
+    # We sort clusters by Mean Return to rank them from Bearish -> Bullish
+    cluster_stats = df.iloc[-train_window:].groupby('Regime')['Return_1d'].mean()
+    sorted_clusters = cluster_stats.sort_values()
     
-    # Let's calculate mean return for each cluster to label them
-    cluster_stats = df.groupby('Regime')['Return_1d'].mean()
-    sorted_clusters = cluster_stats.sort_values() # Low returns to High returns
+    # Map 4 Clusters
+    # 0: Strong Bear (Crash)
+    # 1: Weak Bear / Choppy
+    # 2: Weak Bull / Recovery
+    # 3: Strong Bull
     
-    # Map: Lowest Mean Return -> "Bearish/Volatile"
-    # Highest Mean Return -> "Bullish/Trending"
-    # Middle -> "Neutral/Choppy"
-    
+    labels = ["Strong Bear", "Weak Bear/Choppy", "Weak Bull", "Strong Bull"]
     label_map = {}
-    labels = ["Bearish/Volatile", "Neutral/Choppy", "Bullish/Trending"]
     
     for i, cluster_id in enumerate(sorted_clusters.index):
-        label_map[cluster_id] = labels[i]
+        if i < len(labels):
+            label_map[cluster_id] = labels[i]
+        else:
+            label_map[cluster_id] = "Unknown"
         
     df['Regime_Label'] = df['Regime'].map(label_map)
     

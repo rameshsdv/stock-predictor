@@ -272,44 +272,65 @@ def predict_stock_price(request, days: int = 15):
     expected_return_pct = ((future_price - current_price) / current_price) * 100
     
     # ----------------------------------------------------
-    # STRATEGY V4: PULLBACK (Backtest Proven)
-    # Buy Weakness (RSI < 45) in Uptrend (Close > SMA 200).
+    # STRATEGY V5: REGIME-AWARE PULLBACK
+    # Uses GMM Regime to determine Aggressiveness.
     # ----------------------------------------------------
     
     # Default values
-    sma_200 = last_row.get('SMA_200', current_price) # Fallback if too short history
+    sma_200 = last_row.get('SMA_200', current_price) 
     rsi_val = last_row.get('RSI', 50)
     
     action = "Hold"
     score_desc = "Neutral Market"
     
-    # Logic
+    # Logic Primitives
     is_uptrend = current_price > sma_200
     is_dip = rsi_val < 45
+    is_deep_dip = rsi_val < 35
     is_rip = rsi_val > 70
     
-    # Volume Filter (Avoid Panic Selling)
-    # Check if current volume is dangerously high (2x average)
+    # Volume Filter
     avg_vol = last_row.get('Volume_SMA_20', 0)
     curr_vol = last_row.get('Volume', 0)
-    is_safe_vol = curr_vol < (2.0 * avg_vol) if avg_vol > 0 else True
+    is_safe_vol = curr_vol < (2.5 * avg_vol) if avg_vol > 0 else True # Relaxed slightly for V5
     
-    if is_uptrend and is_dip:
-        if is_safe_vol:
-            action = "Strong Buy"
-            score_desc = "Pullback + Safe Vol"
+    # REGIME GUARDRAILS (The V5 Upgrade)
+    # current_regime_label is one of: 
+    # "Strong Bear", "Weak Bear/Choppy", "Weak Bull", "Strong Bull"
+    
+    if "Strong Bear" in current_regime_label:
+        # CRASH PROTECTION
+        action = "Avoid"
+        score_desc = "Bear Regime (No Buys)"
+        
+    elif "Weak Bear" in current_regime_label or "Choppy" in current_regime_label:
+        # CAUTION MODE
+        if is_deep_dip and is_safe_vol:
+            action = "Buy" # Not Strong Buy
+            score_desc = "Deep Value in Chop"
         else:
             action = "Wait"
-            score_desc = "Dip but High Vol (Risky)"
-    elif is_rip:
-        action = "Sell"
-        score_desc = "Overbought"
-    elif is_uptrend:
-        action = "Hold"
-        score_desc = "Uptrend (Wait for Dip)"
+            score_desc = "Choppy Market (Wait for 35 RSI)"
+            
     else:
-        action = "Avoid"
-        score_desc = "Downtrend"
+        # BULL MODE (Weak or Strong Bull)
+        # Standard V4 Logic applies here
+        if is_uptrend and is_dip:
+            if is_safe_vol:
+                action = "Strong Buy"
+                score_desc = "Bull Trend + Dip"
+            else:
+                action = "Wait"
+                score_desc = "Dip but High Vol"
+        elif is_rip:
+            action = "Sell"
+            score_desc = "Overbought"
+        elif is_uptrend:
+            action = "Hold"
+            score_desc = "Uptrend (Wait for Dip)"
+        else:
+            action = "Avoid"
+            score_desc = "Downtrend"
 
     action_label = f"{action} ({score_desc})"
             

@@ -46,5 +46,13 @@
             "actual": null,
             "verified": false
         }
+    ],
+    "TMPV": [
+        {
+            "date": "2025-12-14",
+            "predicted": 1488.0943319348632,
+            "actual": null,
+            "verified": false
+        }
     ]
 }

@@ -1,0 +1,50 @@
+{
+    "RELIANCE": [
+        {
+            "date": "2025-12-14",
+            "predicted": 1458.780844214413,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "TCS": [
+        {
+            "date": "2025-12-14",
+            "predicted": 2918.6555338117014,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "HDFCBANK": [
+        {
+            "date": "2025-12-14",
+            "predicted": 1035.1126107678872,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "TATAPOWER": [
+        {
+            "date": "2025-12-14",
+            "predicted": 377.63772611271145,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "TATAMOTORS": [
+        {
+            "date": "2025-12-14",
+            "predicted": 396.262509038747,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "TITAN": [
+        {
+            "date": "2025-12-14",
+            "predicted": 3808.570775292708,
+            "actual": null,
+            "verified": false
+        }
+    ]
+}

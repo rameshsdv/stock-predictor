@@ -9,11 +9,14 @@ from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import StandardScaler
 import logging
 
-def clean_data_robust(df: pd.DataFrame, window=5, threshold=5) -> pd.DataFrame:
+def clean_data_robust(df: pd.DataFrame, window=5, threshold=15) -> pd.DataFrame:
     """
     Step 2: Robust Data Cleaning (Quant Level).
     Uses Rolling Median and Median Absolute Deviation (MAD) to detect and filter Price outliers.
     Normal Z-Score fails because returns are not Gaussian. MAD is robust.
+    
+    Refinement (v3.1): Increased threshold to 15 to allow for real market crashes (10-20% moves)
+    while still filtering massive data glitches (>20%).
     """
     df = df.copy()
     
@@ -58,6 +61,8 @@ def add_advanced_features(df: pd.DataFrame) -> pd.DataFrame:
     df['EMA_12'] = EMAIndicator(close=df['Close'], window=12).ema_indicator()
     df['EMA_26'] = EMAIndicator(close=df['Close'], window=26).ema_indicator()
     df['SMA_50'] = SMAIndicator(close=df['Close'], window=50).sma_indicator()
+    df['SMA_200'] = SMAIndicator(close=df['Close'], window=200).sma_indicator()
+    df['Volume_SMA_20'] = df['Volume'].rolling(window=20).mean()
     
     macd = MACD(close=df['Close'])
     df['MACD'] = macd.macd()
@@ -105,9 +110,73 @@ def add_advanced_features(df: pd.DataFrame) -> pd.DataFrame:
     # Momentum * Volume (Price Action confirmation)
     df['Price_Vol_Mom'] = df['Return_1d'] * (df['Volume'] / df['Volume'].rolling(20).mean())
     
+    # --- v3: Adaptive Thresholds ---
+    # Dynamic RSI Bounds (95th/5th percentile over last 3 months)
+    # If RSI > RSI_Dynamic_High -> Probable Top (better than static 70)
+    df['RSI_Dynamic_High'] = df['RSI'].rolling(window=63).quantile(0.95)
+    df['RSI_Dynamic_Low'] = df['RSI'].rolling(window=63).quantile(0.05)
+    
+    # --- v3: Hurst Exponent (Trend vs Chaos) ---
+    # We use a rolling optimized Hurst calculation
+    df = add_hurst_feature(df, window=100)
+    
     # Fill Generated NaNs
     df.bfill(inplace=True)
     df.ffill(inplace=True)
+    
+    return df
+
+def calculate_hurst(series):
+    """
+    Calculate the Hurst Exponent to determine if a time series is:
+    H < 0.5: Mean Reverting (Range Bound)
+    H ~ 0.5: Random Walk (Geometric Brownian Motion)
+    H > 0.5: Trending (Persistent)
+    """
+    try:
+        # Simplified R/S Analysis for speed
+        check_lags = [2, 5, 10, 20, 30] 
+        # Only use lags that fit in the series provided
+        lags = [l for l in check_lags if l < len(series)]
+        
+        if len(lags) < 3:
+            return 0.5
+
+        tau = []
+        
+        for lag in lags:
+            # Price difference (returns) over lag
+            pp = np.subtract(series[lag:], series[:-lag])
+            tau.append(np.std(pp))
+            
+        # Regress log(tau) vs log(lags)
+        # H = slope / 2 (approx for this method) or just slope of log(R/S) vs log(n)
+        # Using simplified Aggregated Variance Method logic here for robustness on short windows:
+        m = np.polyfit(np.log(lags), np.log(tau), 1)
+        hurst = m[0] # Slope
+        
+        return hurst
+    except:
+        return 0.5
+
+def add_hurst_feature(df: pd.DataFrame, window=100) -> pd.DataFrame:
+    """
+    Apply rolling Hurst exponent.
+    Warning: This is computationally expensive. We optimize by stride.
+    """
+    # Initialize with default 0.5 (Random Walk)
+    df['Hurst'] = 0.5
+    
+    # We only compute every 5th day to save CPU, then interpolate
+    # It changes slowly anyway.
+    
+    for i in range(window, len(df), 5):
+        slice_val = df['Close'].iloc[i-window:i].values
+        h = calculate_hurst(slice_val)
+        df.iloc[i, df.columns.get_loc('Hurst')] = h
+        
+    # Forward fill the gaps created by stride
+    df['Hurst'] = df['Hurst'].replace(0.5, np.nan).interpolate(method='linear').fillna(0.5)
     
     return df
 

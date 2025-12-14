@@ -5,10 +5,12 @@ import { StockSearch } from './StockSearch';
 import { PredictionChart, ChartDataPoint } from './PredictionChart';
 import { IndicatorCard } from './IndicatorCard';
 import { motion } from 'framer-motion';
+import { TechnicalSummary } from './TechnicalSummary';
 
 const fetchPrediction = async (symbol: string) => {
     try {
-        const response = await fetch(`http://localhost:8000/predict`, {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${apiUrl}/predict`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ symbol })
@@ -50,9 +52,15 @@ export function Dashboard() {
                 action: result.action_signal,
                 trendStrength: result.trend_strength,
                 rsi: result.rsi,
+                rsi: result.rsi,
                 macdSignal: result.macd_signal,
                 currentPrice: result.current_price,
-                significantFeatures: result.significant_features
+                significantFeatures: result.significant_features,
+                tvData: result.tv_technical_indicators,
+                accuracy: result.model_accuracy,
+                breakout: result.breakout_levels,
+                metrics: result.metrics,
+                context: result.market_context
             });
         } else {
             setError("Failed to fetch data. Please check the symbol or try again.");
@@ -105,11 +113,60 @@ export function Dashboard() {
 
                         {/* Analysis Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* 1. Action Signal (Colored) */}
+                            <div className={`p-4 rounded-xl border ${analysis.action.includes('Buy') ? 'bg-green-500/10 border-green-500/20 text-green-400' :
+                                analysis.action.includes('Sell') ? 'bg-red-500/10 border-red-500/20 text-red-400' :
+                                    'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                                }`}>
+                                <h3 className="text-sm font-medium opacity-70">Action Signal</h3>
+                                <div className="mt-2 flex items-baseline gap-2">
+                                    <span className="text-2xl font-bold">{analysis.action.split('(')[0]}</span>
+                                </div>
+                                <p className="text-xs opacity-60 mt-1">{analysis.action.split('(')[1]?.replace(')', '') || ''}</p>
+                            </div>
+
+                            {/* 2. Market Regime */}
                             <IndicatorCard
-                                title="Market Regime (GMM)"
+                                title="Market Phase"
                                 value={analysis.marketPhase}
-                                trend={analysis.action.includes('Buy') ? 'up' : analysis.action.includes('Sell') ? 'down' : 'neutral'}
-                                description={`Action Signal: ${analysis.action}`}
+                                trend="neutral"
+                                description="GMM Regime"
+                            />
+
+                            {/* 3. Broad Market Trend */}
+                            <IndicatorCard
+                                title="Broad Market (Nifty)"
+                                value={analysis.context?.broad_market?.trend || "N/A"}
+                                subValue={`RSI: ${analysis.context?.broad_market?.rsi || 0}`}
+                                trend={analysis.context?.broad_market?.color === 'green' ? 'up' : 'down'}
+                                description="Market Context"
+                            />
+
+                            {/* 4. Sector Trend */}
+                            <IndicatorCard
+                                title={`Sector (${analysis.context?.sector_market?.name || 'Unknown'})`}
+                                value={analysis.context?.sector_market?.trend || "N/A"}
+                                subValue={`RSI: ${analysis.context?.sector_market?.rsi || 0}`}
+                                trend={analysis.context?.sector_market?.color === 'green' ? 'up' : 'down'}
+                                description="Industry Trend"
+                            />
+                        </div>
+
+                        {/* Secondary Stats Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <IndicatorCard
+                                title="Model Accuracy (Train/Test)"
+                                value={`${analysis.metrics?.training_accuracy}% / ${analysis.metrics?.testing_accuracy}%`}
+                                subValue={`Live MAE: ${analysis.accuracy?.mae_percent || 0}%`}
+                                trend="neutral"
+                                description={`Live Samples: ${analysis.accuracy?.samples || 0}`}
+                            />
+                            <IndicatorCard
+                                title="Breakout Levels"
+                                value={`R1: ${analysis.breakout?.resistance_1 || 0}`}
+                                subValue={`S1: ${analysis.breakout?.support_1 || 0}`}
+                                trend="neutral"
+                                description={`Pivot: ${analysis.breakout?.pivot || 0}`}
                             />
                             <IndicatorCard
                                 title="RSI (14)"
@@ -119,12 +176,6 @@ export function Dashboard() {
                                 description="Momentum Oscillator"
                             />
                             <IndicatorCard
-                                title="MACD Signal"
-                                value={analysis.macdSignal}
-                                trend={analysis.macdSignal === 'Buy' ? 'up' : 'down'}
-                                description="MACD vs Signal Line crossover."
-                            />
-                            <IndicatorCard
                                 title="Trend Strength"
                                 value={analysis.trendStrength}
                                 trend="neutral"
@@ -132,17 +183,22 @@ export function Dashboard() {
                             />
                         </div>
 
-                        <div className="p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-yellow-200 text-sm flex gap-3 items-start">
-                            <span>⚠️</span>
-                            <p>
-                                Disclaimer: This prediction is generated by an AI model and should not be considered financial advice.
-                                Market conditions can change rapidly. Always do your own research.
-                            </p>
+                        {/* TradingView Technicals */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <TechnicalSummary data={analysis.tvData} />
+
+                            <div className="p-6 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-yellow-200 text-sm flex gap-3 items-start h-fit">
+                                <span>⚠️</span>
+                                <p>
+                                    Disclaimer: This prediction is generated by an AI model and should not be considered financial advice.
+                                    Market conditions can change rapidly. Always do your own research.
+                                </p>
+                            </div>
                         </div>
 
                     </motion.div>
                 )}
             </main>
-        </div>
+        </div >
     );
 }

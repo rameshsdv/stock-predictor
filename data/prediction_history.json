@@ -1,0 +1,386 @@
+{
+    "RELIANCE.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1459.0777535875907,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "TCS.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 2921.800370855614,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "HDFCBANK.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1034.7746932592188,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "INFY.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1505.9576490560166,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "ICICIBANK.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1390.7101499273742,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "HINDUNILVR.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 2383.7536292236264,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "ITC.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 384.3410472451775,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "SBIN.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 922.6137191923839,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "BHARTIARTL.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 2063.6009660887553,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "LICI.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 973.5215569510475,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "KOTAKBANK.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 2148.2754688768878,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "LT.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 3984.637487071107,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "HCLTECH.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1560.2350787268622,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "AXISBANK.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1192.049045127602,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "ASIANPAINT.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 2548.9272523657046,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "MARUTI.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 15904.000335161983,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "SUNPHARMA.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1658.506321780024,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "TITAN.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 3808.6775240741335,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "ULTRACEMCO.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 12373.00594022576,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "BAJFINANCE.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1056.3867834256553,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "WIPRO.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 255.71429624785398,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "ONGC.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 238.17872073100244,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "NTPC.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 322.97145892450055,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "POWERGRID.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 265.3877576055203,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "TATAMOTORS.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 395.17313590455757,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "JSWSTEEL.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1158.0070989272217,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "ADANIENT.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 2313.8221572634698,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "M&M.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 3605.9198787761816,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "ADANIPORTS.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1483.5543979371143,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "COALINDIA.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 371.3337200614655,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "TATASTEEL.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 173.5702022720905,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "HDFCLIFE.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 756.3558495519294,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "BRITANNIA.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 6126.307869402571,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "BAJAJFINSV.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 2114.343799168272,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "GRASIM.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 2754.507776322586,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "TECHM.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1481.0448352395617,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "INDUSINDBK.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 645.9683922318164,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "CIPLA.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1489.6044293790717,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "DIVISLAB.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 6391.818174923102,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "SBILIFE.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1949.450612796639,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "DRREDDY.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1238.326731554487,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "EICHERMOT.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 7000.534798884122,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "BPCL.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 352.1858388266813,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "HEROMOTOCO.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 5705.308967125599,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "TATACONSUM.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 1135.8015119466854,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "UPL.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 734.874924619746,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "APOLLOHOSP.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 7670.461222187937,
+            "actual": null,
+            "verified": false
+        }
+    ],
+    "HINDALCO.NS": [
+        {
+            "date": "2025-12-15",
+            "predicted": 800.619065665021,
+            "actual": null,
+            "verified": false
+        }
+    ]
+}

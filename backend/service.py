@@ -9,12 +9,90 @@ from feature_engine import clean_data_robust, add_advanced_features, select_best
 from sentiment import get_stock_sentiment
 import logging
 from datetime import datetime, timedelta
+from tradingview_ta import TA_Handler, Interval, Exchange
+
+def get_tradingview_data(symbol: str):
+    """
+    Fetch technical analysis summary from TradingView.
+    """
+    try:
+        # Remove .NS and specify NSE exchange
+        clean_symbol = symbol.replace('.NS', '')
+        
+        handler = TA_Handler(
+            symbol=clean_symbol,
+            exchange="NSE",
+            screener="india",
+            interval=Interval.INTERVAL_1_DAY
+        )
+        
+        analysis = handler.get_analysis()
+        return {
+            "indicators": analysis.indicators,
+            "summary": analysis.summary # Contains RECOMMENDATION (BUY/SELL), BUY_COUNT, SELL_COUNT
+        }
+    except Exception as e:
+        print(f"TradingView Fetch Failed: {e}", flush=True)
+        return {"indicators": {}, "summary": {}}
 
 # Suppress Prophet logging
 logger = logging.getLogger('cmdstanpy')
 logger.addHandler(logging.NullHandler())
 logger.propagate = False
 logger.setLevel(logging.CRITICAL)
+
+# --- CONFIG & HELPERS ---
+SECTOR_MAP = {
+    'Energy': '^CNXENERGY',
+    'Technology': '^CNXIT',
+    'Financial Services': '^NSEBANK',
+    'Consumer Cyclical': '^CNXAUTO',
+    'Healthcare': '^CNXPHARMA',
+    'Basic Materials': '^CNXMETAL',
+    'Consumer Defensive': '^CNXFMCG'
+}
+
+def get_market_trend(symbol):
+    """
+    Fetches trend context for an index (Nifty/Sector).
+    Returns: { trend: "Uptrend", color: "red/green", rsi: 50 }
+    """
+
+    try:
+        # Use Ticker.history for reliable single-level columns
+        ticker = yf.Ticker(symbol)
+        data = ticker.history(period="6mo")
+        
+        if len(data) < 50: return {"trend": "N/A", "color": "gray", "rsi": 0}
+
+        
+        # Clean cleaning
+        close = data['Close']
+        sma_50 = close.rolling(50).mean()
+        
+        # RSI
+        delta = close.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        
+        current_close = close.iloc[-1]
+        current_sma = sma_50.iloc[-1]
+        current_rsi = rsi.iloc[-1]
+        
+        # Trend Logic
+        if current_close > current_sma:
+            trend = "Bullish"
+            color = "green"
+        else:
+            trend = "Bearish"
+            color = "red"
+            
+        return {"trend": trend, "color": color, "rsi": round(current_rsi, 1)}
+    except Exception as e:
+        print(f"Market Trend Error {symbol}: {e}", flush=True)
+        return {"trend": "N/A", "color": "gray", "rsi": 0}
 
 # Initialize India Holidays
 india_holidays = holidays.India()
@@ -39,11 +117,38 @@ def get_stock_data(symbol: str, period: str = "5y"):
     
     return df
 
-def predict_stock_price(symbol: str, days: int = 15):
+# --- IN-MEMORY CACHE ---
+PREDICTION_CACHE = {}
+CACHE_DURATION_HOURS = 4
+
+def predict_stock_price(request, days: int = 15):
     """
     Run the full QUANT pipeline:
     Fetch -> Robust MAD Clean -> Quant Features -> GMM Regimes -> Select Best -> Prophet -> Sentiment
     """
+    # Handle Input (String or Pydantic Object)
+    if isinstance(request, str):
+        symbol = request
+    else:
+        symbol = request.symbol
+
+    # CHECK CACHE
+    if symbol in PREDICTION_CACHE:
+        entry = PREDICTION_CACHE[symbol]
+        age = datetime.now() - entry['time']
+        if age < timedelta(hours=CACHE_DURATION_HOURS):
+            logging.info(f"Serving CACHED result for {symbol}")
+            print(f">> Serving CACHED result for {symbol} (Age: {age})", flush=True)
+            return entry['data']
+
+    # 0. Fetch Context Info (Sector)
+    ticker_info = {}
+    try:
+        t = yf.Ticker(symbol if symbol.endswith(".NS") else f"{symbol}.NS")
+        ticker_info = t.info
+    except:
+        pass
+
     # 1. Fetch
     df = get_stock_data(symbol)
     
@@ -75,6 +180,38 @@ def predict_stock_price(symbol: str, days: int = 15):
     # We use the cleaned 'Close' price which has removed outliers
     prophet_df = df[['Date', 'Close']].rename(columns={'Date': 'ds', 'Close': 'y'})
     
+    # --- METRICS CALCULATION (Train/Test Split) ---
+    # We perform a backtest on the last 30 days to get "Testing Accuracy"
+    try:
+        test_days = 30
+        train_df = prophet_df.iloc[:-test_days]
+        test_df = prophet_df.iloc[-test_days:]
+        
+        # Temp Model for Metrics
+        m_metric = Prophet(daily_seasonality=False, yearly_seasonality=True, weekly_seasonality=True, changepoint_prior_scale=0.05)
+        m_metric.add_country_holidays(country_name='IN')
+        m_metric.fit(train_df)
+        
+        # Eval Train
+        train_pred = m_metric.predict(train_df)
+        train_mape = np.mean(np.abs((train_df['y'] - train_pred['yhat']) / train_df['y'])) * 100
+        train_acc = max(0, 100 - train_mape)
+        
+        # Eval Test
+        future_test = m_metric.make_future_dataframe(periods=test_days)
+        # Filter weekends/holidays logic mirrors main model, but for simplicity here we just predict
+        # Actually, make_future_dataframe includes history. We just want the tail.
+        # Safer: predict on test_df['ds']
+        test_pred = m_metric.predict(test_df)
+        test_mape = np.mean(np.abs((test_df['y'].reset_index(drop=True) - test_pred['yhat'].iloc[-test_days:].reset_index(drop=True)) / test_df['y'].reset_index(drop=True))) * 100
+        test_acc = max(0, 100 - test_mape)
+        
+    except Exception as e:
+        logging.error(f"Metrics Calc Failed: {e}")
+        train_acc = 0
+        test_acc = 0
+
+    # Main Model (Full Data)
     m = Prophet(
         daily_seasonality=False,
         yearly_seasonality=True,
@@ -134,31 +271,47 @@ def predict_stock_price(symbol: str, days: int = 15):
     current_price = last_row['Close']
     expected_return_pct = ((future_price - current_price) / current_price) * 100
     
+    # ----------------------------------------------------
+    # STRATEGY V4: PULLBACK (Backtest Proven)
+    # Buy Weakness (RSI < 45) in Uptrend (Close > SMA 200).
+    # ----------------------------------------------------
     
-    # Determine Action Signal based on Regime + Technicals + Forecast (Consensus)
-    # "Quant Rule v2":
-    # If Regime is Bullish:
-    #    - If Expected Return < 0% -> Wait (Dip Anticipated)
-    #    - If RSI < 75 -> Buy
-    # If Regime is Bearish -> Sell/Cash
-    # If Neutral -> Mean Reversion
+    # Default values
+    sma_200 = last_row.get('SMA_200', current_price) # Fallback if too short history
+    rsi_val = last_row.get('RSI', 50)
     
     action = "Hold"
-    if "Bullish" in current_regime_label:
-        if expected_return_pct < 0:
-            action = "Wait (Dip Expected)"
-        elif last_row.get('RSI') < 75:
-            action = "Buy"
+    score_desc = "Neutral Market"
+    
+    # Logic
+    is_uptrend = current_price > sma_200
+    is_dip = rsi_val < 45
+    is_rip = rsi_val > 70
+    
+    # Volume Filter (Avoid Panic Selling)
+    # Check if current volume is dangerously high (2x average)
+    avg_vol = last_row.get('Volume_SMA_20', 0)
+    curr_vol = last_row.get('Volume', 0)
+    is_safe_vol = curr_vol < (2.0 * avg_vol) if avg_vol > 0 else True
+    
+    if is_uptrend and is_dip:
+        if is_safe_vol:
+            action = "Strong Buy"
+            score_desc = "Pullback + Safe Vol"
         else:
-            action = "Take Profit"
-    elif "Bearish" in current_regime_label:
+            action = "Wait"
+            score_desc = "Dip but High Vol (Risky)"
+    elif is_rip:
         action = "Sell"
+        score_desc = "Overbought"
+    elif is_uptrend:
+        action = "Hold"
+        score_desc = "Uptrend (Wait for Dip)"
     else:
-        # Neutral Regime
-        if last_row.get('RSI') < 30:
-            action = "Buy (Rebound)"
-        elif last_row.get('RSI') > 70:
-            action = "Sell (Reversal)"
+        action = "Avoid"
+        score_desc = "Downtrend"
+
+    action_label = f"{action} ({score_desc})"
             
     # Trend Strength (ADX)
     trend_strength = "Weak"
@@ -167,17 +320,63 @@ def predict_stock_price(symbol: str, days: int = 15):
     if last_row.get('ADX') > 50:
         trend_strength = "Very Strong"
     
+    # 10. Fetch TradingView Indicators (Live)
+    tv_analysis = get_tradingview_data(symbol)
+    
+    # 11. Calculate Breakout Points (Local Fallback)
+    # Pivot R1/S1 using yesterday's data
+    # Pivot = (H+L+C)/3
+    try:
+        prev = df.iloc[-2] # Previous day (Completed)
+        pivot = (prev['High'] + prev['Low'] + prev['Close']) / 3
+        r1 = (2 * pivot) - prev['Low']
+        s1 = (2 * pivot) - prev['High']
+    except:
+        pivot, r1, s1 = 0, 0, 0
+    
+    # 12. Accuracy Tracker
+    import tracker
+    tracker.log_prediction(symbol, future_price) # Log prophet target
+    accuracy_stats = tracker.verify_accuracy(symbol)
+    
+    # 13. Context Data
+    nifty_trend = get_market_trend('^NSEI')
+    
+    sector_name = ticker_info.get('sector', 'Unknown')
+    sector_index = SECTOR_MAP.get(sector_name, None)
+    
+    if sector_index:
+        sector_trend_data = get_market_trend(sector_index)
+        sector_trend_data['name'] = sector_name # e.g. "Energy"
+    else:
+        sector_trend_data = {"trend": "N/A", "color": "gray", "rsi": 0, "name": sector_name}
+
     result = {
         "symbol": symbol,
         "current_price": last_row['Close'],
-        "market_phase": current_regime_label, # Now using GMM Label!
-        "action_signal": action,
+        "market_phase": current_regime_label,
+        "action_signal": action_label,
         "trend_strength": trend_strength,
         "significant_features": top_features,
         "sentiment": sentiment,
         "rsi": last_row.get('RSI'),
         "macd_signal": "Buy" if last_row.get('MACD') > last_row.get('MACD_Signal') else "Sell",
-        "chart_data": chart_data
+        "chart_data": chart_data,
+        "tv_technical_indicators": tv_analysis,
+        "breakout_levels": {
+            "pivot": round(pivot, 2),
+            "resistance_1": round(r1, 2),
+            "support_1": round(s1, 2)
+        },
+        "model_accuracy": accuracy_stats,
+        "metrics": {
+            "training_accuracy": round(train_acc, 2),
+            "testing_accuracy": round(test_acc, 2)
+        },
+        "market_context": {
+            "broad_market": nifty_trend,
+            "sector_market": sector_trend_data
+        }
     }
 
     # Log the full JSON response for the user
@@ -189,5 +388,11 @@ def predict_stock_price(symbol: str, days: int = 15):
 
     # Log specific Future Price for user convenience
     print(f"\n>> 15-DAY FORECAST TARGET: {future_price:.2f} ({expected_return_pct:.2f}%) <<\n", flush=True)
+
+    # SAVE TO CACHE
+    PREDICTION_CACHE[symbol] = {
+        'time': datetime.now(),
+        'data': result
+    }
 
     return result
